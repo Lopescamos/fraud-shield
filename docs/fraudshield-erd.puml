@@ -1,0 +1,301 @@
+@startuml FraudShield-ERD
+' Diagrama Entidad-Relación de FraudShield
+' Muestra los cuatro esquemas (uno por microservicio) y sus tablas principales.
+
+!define PK(x) <b><color:#B8860B>x</color></b>
+!define FK(x) <color:#1E88E5>x</color>
+!define U(x)  <u>x</u>
+
+hide circle
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Helvetica"
+
+' ─────────── Esquema tx — transaction-service ───────────
+package "tx (transaction-service)" #E8F4FD {
+
+  entity transactions {
+    PK(id) : BIGSERIAL
+    --
+    U(transaction_id) : UUID
+    account_id_hash : VARCHAR(64)
+    amount : NUMERIC(14,2)
+    currency : CHAR(3)
+    channel : VARCHAR(16)
+    device_id : VARCHAR(64)
+    geo_lat : NUMERIC(9,6)
+    geo_lng : NUMERIC(9,6)
+    occurred_at : TIMESTAMPTZ
+    received_at : TIMESTAMPTZ
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+  }
+
+  entity accounts_profile {
+    PK(id) : BIGSERIAL
+    --
+    U(account_id_hash) : VARCHAR(64)
+    avg_amount : NUMERIC(14,2)
+    known_devices : JSONB
+    tx_count : INT
+    last_seen_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+  }
+
+  entity "outbox_events (tx)" as tx_outbox {
+    PK(id) : BIGSERIAL
+    --
+    U(message_id) : UUID
+    channel : VARCHAR(80)
+    message_key : VARCHAR(64)
+    message_type : VARCHAR(80)
+    schema_version : SMALLINT
+    payload : JSONB
+    status : VARCHAR(16)
+    attempts : SMALLINT
+    published_at : TIMESTAMPTZ
+    created_at : TIMESTAMPTZ
+  }
+
+  entity idempotency_keys {
+    PK(id) : BIGSERIAL
+    --
+    U(key) : VARCHAR(80)
+    FK(transaction_id) : UUID
+    created_at : TIMESTAMPTZ
+  }
+}
+
+' ─────────── Esquema scoring — scoring-service ───────────
+package "scoring (scoring-service)" #FDF4E8 {
+
+  entity risk_assessments {
+    PK(id) : BIGSERIAL
+    --
+    U(assessment_id) : UUID
+    U(transaction_id) : UUID
+    account_id_hash : VARCHAR(64)
+    score : SMALLINT
+    level : VARCHAR(10)
+    rules_score : SMALLINT
+    xgb_probability : NUMERIC(4,3)
+    iforest_anomaly : NUMERIC(4,3)
+    degraded_mode : BOOLEAN
+    FK(model_version) : VARCHAR(40)
+    created_at : TIMESTAMPTZ
+  }
+
+  entity rule_hits {
+    PK(id) : BIGSERIAL
+    --
+    FK(assessment_id) : UUID
+    rule_code : VARCHAR(40)
+    points : SMALLINT
+    detail_json : JSONB
+  }
+
+  entity shap_factors {
+    PK(id) : BIGSERIAL
+    --
+    FK(assessment_id) : UUID
+    rank : SMALLINT
+    feature : VARCHAR(80)
+    shap_value : NUMERIC(6,4)
+    direction : VARCHAR(8)
+  }
+
+  entity model_registry {
+    PK(id) : BIGSERIAL
+    --
+    U(version) : VARCHAR(40)
+    algorithm : VARCHAR(40)
+    precision_score : NUMERIC(4,3)
+    recall_score : NUMERIC(4,3)
+    pr_auc : NUMERIC(4,3)
+    trained_at : TIMESTAMPTZ
+    is_active : BOOLEAN
+  }
+
+  entity "processed_events (scoring)" as sc_processed {
+    PK(id) : BIGSERIAL
+    --
+    message_id : UUID
+    consumer_group : VARCHAR(80)
+    processed_at : TIMESTAMPTZ
+  }
+
+  entity "outbox_events (scoring)" as sc_outbox {
+    PK(id) : BIGSERIAL
+    --
+    U(message_id) : UUID
+    channel : VARCHAR(80)
+    message_key : VARCHAR(64)
+    message_type : VARCHAR(80)
+    schema_version : SMALLINT
+    payload : JSONB
+    status : VARCHAR(16)
+    attempts : SMALLINT
+    published_at : TIMESTAMPTZ
+    created_at : TIMESTAMPTZ
+  }
+}
+
+' ─────────── Esquema alerts — alert-service ───────────
+package "alerts (alert-service)" #F0FDE8 {
+
+  entity fraud_alerts {
+    PK(id) : BIGSERIAL
+    --
+    U(alert_id) : UUID
+    U(transaction_id) : UUID
+    account_id_hash : VARCHAR(64)
+    severity : VARCHAR(10)
+    status : VARCHAR(16)
+    analyst_id : UUID
+    opened_at : TIMESTAMPTZ
+    closed_at : TIMESTAMPTZ
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+  }
+
+  entity alert_notes {
+    PK(id) : BIGSERIAL
+    --
+    FK(alert_id) : UUID
+    author : UUID
+    body : TEXT
+    created_at : TIMESTAMPTZ
+  }
+
+  entity alert_status_history {
+    PK(id) : BIGSERIAL
+    --
+    FK(alert_id) : UUID
+    from_status : VARCHAR(16)
+    to_status : VARCHAR(16)
+    changed_by : UUID
+    reason : TEXT
+    changed_at : TIMESTAMPTZ
+  }
+
+  entity "processed_events (alerts)" as al_processed {
+    PK(id) : BIGSERIAL
+    --
+    message_id : UUID
+    consumer_group : VARCHAR(80)
+    processed_at : TIMESTAMPTZ
+  }
+
+  entity "outbox_events (alerts)" as al_outbox {
+    PK(id) : BIGSERIAL
+    --
+    U(message_id) : UUID
+    channel : VARCHAR(80)
+    message_type : VARCHAR(80)
+    payload : JSONB
+    status : VARCHAR(16)
+    created_at : TIMESTAMPTZ
+  }
+}
+
+' ─────────── Esquema analytics — analytics-service ───────────
+package "analytics (analytics-service)" #F7E8FD {
+
+  entity fact_transactions {
+    PK(id) : BIGSERIAL
+    --
+    U(transaction_id) : UUID
+    account_id_hash : VARCHAR(64)
+    amount : NUMERIC(14,2)
+    currency : CHAR(3)
+    FK(channel_id) : INT
+    FK(date_id) : INT
+    occurred_at : TIMESTAMPTZ
+  }
+
+  entity fact_alerts {
+    PK(id) : BIGSERIAL
+    --
+    U(alert_id) : UUID
+    transaction_id : UUID
+    severity : VARCHAR(10)
+    status : VARCHAR(16)
+    FK(risk_level_id) : INT
+    FK(date_opened_id) : INT
+    FK(date_closed_id) : INT
+    resolution_minutes : INT
+  }
+
+  entity dim_date {
+    PK(date_id) : INT
+    --
+    full_date : DATE
+    year : SMALLINT
+    quarter : SMALLINT
+    month : SMALLINT
+    day : SMALLINT
+    hour : SMALLINT
+    day_of_week : SMALLINT
+  }
+
+  entity dim_channel {
+    PK(channel_id) : INT
+    --
+    U(code) : VARCHAR(16)
+    name : VARCHAR(40)
+    description : VARCHAR(120)
+  }
+
+  entity dim_risk_level {
+    PK(risk_level_id) : INT
+    --
+    U(code) : VARCHAR(10)
+    name : VARCHAR(40)
+    min_score : SMALLINT
+    max_score : SMALLINT
+  }
+
+  entity "processed_events (analytics)" as an_processed {
+    PK(id) : BIGSERIAL
+    --
+    message_id : UUID
+    consumer_group : VARCHAR(80)
+    processed_at : TIMESTAMPTZ
+  }
+}
+
+' ─────────── Relaciones intra-esquema ───────────
+transactions      ||--o{ idempotency_keys
+risk_assessments  ||--o{ rule_hits
+risk_assessments  ||--o{ shap_factors
+model_registry    ||--o{ risk_assessments : "model_version"
+
+fraud_alerts      ||--o{ alert_notes
+fraud_alerts      ||--o{ alert_status_history
+
+dim_date    ||--o{ fact_transactions : "date_id"
+dim_channel ||--o{ fact_transactions : "channel_id"
+dim_date    ||--o{ fact_alerts       : "date_opened_id"
+dim_date    ||--o{ fact_alerts       : "date_closed_id"
+dim_risk_level ||--o{ fact_alerts    : "risk_level_id"
+
+' ─────────── Relaciones lógicas entre esquemas (vía eventos, NO FK físicas) ───────────
+' Las flechas punteadas indican enlace lógico resuelto en runtime vía eventos Kafka;
+' no existen FOREIGN KEY entre esquemas — cada servicio es dueño de sus datos.
+transactions     ..> risk_assessments : "TransactionReceived → TransactionScored"
+risk_assessments ..> fraud_alerts     : "TransactionScored → AlertRaised"
+fraud_alerts     ..> fact_alerts      : "AlertRaised / AlertResolved"
+transactions     ..> fact_transactions : "TransactionReceived"
+
+note top of tx_outbox
+  Outbox pattern: la fila se escribe en
+  la misma transacción que el aggregate,
+  y un relay la publica en Kafka más tarde.
+end note
+
+note top of sc_processed
+  Idempotencia: (message_id, consumer_group) UNIQUE.
+  El consumidor descarta duplicados sin volver a aplicar el command.
+end note
+
+@enduml
