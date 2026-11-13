@@ -16,7 +16,6 @@ from alert.domain.model.commands.raise_alert_from_score_command import (
 from alert.domain.model.commands.resolve_alert_command import ResolveAlertCommand
 from alert.domain.model.valueobjects.alert_status import AlertStatus
 from alert.kernel.application.result import Failure, Success
-
 from tests.unit.application.fakes.fake_alert_repository import FakeAlertRepository
 from tests.unit.application.fakes.fake_session import (
     FakeSession,
