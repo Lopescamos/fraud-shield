@@ -11,7 +11,6 @@ from scoring.domain.model.commands.score_transaction_command import (
 )
 from scoring.domain.model.valueobjects.risk_factor import RiskFactor
 from scoring.kernel.application.result import Failure, Success
-
 from tests.unit.application.fakes.fake_ports import (
     FailingRuleEngine,
     StaticExplainer,

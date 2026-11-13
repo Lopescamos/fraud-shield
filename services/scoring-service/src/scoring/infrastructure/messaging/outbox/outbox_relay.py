@@ -4,8 +4,8 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from scoring.infrastructure.messaging.outbox.kafka_broker_publisher import (
     KafkaBrokerPublisher,
@@ -63,7 +63,7 @@ class OutboxRelay:
                 logger.exception("outbox-relay-iteration-failed")
             try:
                 await asyncio.wait_for(self._stop_event.wait(), timeout=self._interval)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
     async def _drain_once(self) -> None:

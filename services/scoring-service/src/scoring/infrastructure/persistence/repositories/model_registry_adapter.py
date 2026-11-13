@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from scoring.domain.services.model_registry import ActiveModel, ModelRegistry
 from scoring.infrastructure.persistence.entities.model_registry_persistence_entity import (

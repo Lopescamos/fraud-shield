@@ -9,7 +9,7 @@ from typing import Any
 from shared_contracts.constants import TRANSACTIONS_RECEIVED_V1
 from shared_contracts.envelope import Envelope
 from shared_contracts.transactions.v1 import TransactionReceivedV1
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from scoring.application.commandservices.scoring_application_service import (
     ScoringApplicationService,
