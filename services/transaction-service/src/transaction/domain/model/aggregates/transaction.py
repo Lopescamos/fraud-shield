@@ -36,7 +36,7 @@ class Transaction(AbstractDomainAggregateRoot):
         channel: Channel,
         occurred_at: datetime,
         device_id: str | None = None,
-    ) -> "Transaction":
+    ) -> Transaction:
         return cls(
             id=id,
             account_id=account_id,
@@ -47,7 +47,7 @@ class Transaction(AbstractDomainAggregateRoot):
         )
 
     @classmethod
-    def register(cls, command: RegisterTransactionCommand) -> "Transaction":
+    def register(cls, command: RegisterTransactionCommand) -> Transaction:
         tx = cls(
             id=Ids.new_id(),
             account_id=AccountId(command.account_id),

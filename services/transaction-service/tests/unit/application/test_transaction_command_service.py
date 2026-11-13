@@ -7,6 +7,9 @@ from typing import Any
 
 import pytest
 
+from tests.unit.application.fakes.fake_transaction_repository import (
+    FakeTransactionRepository,
+)
 from transaction.application.internal.commandservices.transaction_command_service_impl import (
     TransactionCommandServiceImpl,
 )
@@ -15,10 +18,6 @@ from transaction.domain.model.commands.register_transaction_command import (
 )
 from transaction.domain.model.valueobjects.channel import Channel
 from transaction.kernel.application.result import Failure, Success
-
-from tests.unit.application.fakes.fake_transaction_repository import (
-    FakeTransactionRepository,
-)
 
 
 class FakeTransaction:
@@ -41,7 +40,7 @@ class FakeSession:
         yield self.trans
         self.trans.committed = True
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *_: Any) -> None:

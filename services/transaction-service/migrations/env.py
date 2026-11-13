@@ -9,10 +9,10 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from transaction.infrastructure.persistence.session import Base
-import transaction.infrastructure.persistence.entities.transaction_persistence_entity  # noqa: F401
 import transaction.infrastructure.messaging.outbox.outbox_persistence_entity  # noqa: F401
 import transaction.infrastructure.persistence.entities.idempotency_key_persistence_entity  # noqa: F401
+import transaction.infrastructure.persistence.entities.transaction_persistence_entity  # noqa: F401
+from transaction.infrastructure.persistence.session import Base
 
 config = context.config
 

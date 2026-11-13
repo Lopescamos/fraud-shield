@@ -27,7 +27,7 @@ class ApplicationError:
     detail: str
 
     @staticmethod
-    def validation_error(field: str, detail: str) -> "ApplicationError":
+    def validation_error(field: str, detail: str) -> ApplicationError:
         return ApplicationError(
             code="validation_error",
             title=f"Validation failed for '{field}'",
@@ -35,7 +35,7 @@ class ApplicationError:
         )
 
     @staticmethod
-    def not_found(aggregate: str, id_: str) -> "ApplicationError":
+    def not_found(aggregate: str, id_: str) -> ApplicationError:
         return ApplicationError(
             code="not_found",
             title=f"{aggregate} not found",
@@ -43,7 +43,7 @@ class ApplicationError:
         )
 
     @staticmethod
-    def business_rule_violation(aggregate: str, rule: str) -> "ApplicationError":
+    def business_rule_violation(aggregate: str, rule: str) -> ApplicationError:
         return ApplicationError(
             code="business_rule_violation",
             title=f"{aggregate} business rule violation",
@@ -51,7 +51,7 @@ class ApplicationError:
         )
 
     @staticmethod
-    def conflict(aggregate: str, detail: str) -> "ApplicationError":
+    def conflict(aggregate: str, detail: str) -> ApplicationError:
         return ApplicationError(
             code="conflict",
             title=f"{aggregate} conflict",
@@ -59,7 +59,7 @@ class ApplicationError:
         )
 
     @staticmethod
-    def unexpected(operation: str, detail: str) -> "ApplicationError":
+    def unexpected(operation: str, detail: str) -> ApplicationError:
         return ApplicationError(
             code="unexpected",
             title=f"Unexpected error while {operation}",

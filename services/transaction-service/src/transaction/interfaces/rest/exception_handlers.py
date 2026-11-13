@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -21,7 +21,7 @@ def _trace_id_from(request: Request) -> str:
     return request.headers.get("X-Trace-Id", "unknown")
 
 
-def raise_from_error(error: ApplicationError) -> None:
+def raise_from_error(error: ApplicationError) -> NoReturn:
     status = _STATUS_FROM_CODE.get(error.code, 500)
     raise HTTPException(
         status_code=status,
