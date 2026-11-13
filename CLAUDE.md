@@ -252,20 +252,31 @@ Los servicios aún no creados también llevan archivo, con "Pendiente" = ["crear
 
 ## 8. Flujo de trabajo con git y GitHub
 
-### 7.1 Estrategia de ramas (GitHub Flow)
+### 8.1 Estrategia de ramas (GitFlow)
 
-- `main` **siempre desplegable**. Nunca se hace commit directo.
-- Para cada feature, fix o tarea, abro una rama **desde `main`** con prefijo según el tipo del cambio:
-  - `feat/<scope>` — funcionalidad nueva (`feat/shared-contracts`, `feat/transaction-service-register`).
-  - `fix/<scope>` — corrección (`fix/outbox-relay-retry`).
-  - `chore/<scope>` — tareas sin impacto funcional (`chore/update-poetry`).
-  - `docs/<scope>` — solo documentación.
-  - `refactor/<scope>` — cambios internos sin alterar comportamiento.
-  - `test/<scope>` — solo pruebas.
-- Una rama vive para una sola historia o un solo cambio. Si crece, se parte.
-- Nombres en minúscula, con guiones. El `scope` sigue las carpetas del monorepo (`shared-contracts`, `transaction-service`, `infra`, `docs`, etc.).
+El repositorio tiene **dos ramas protegidas**:
 
-### 7.2 Convención de commits (Conventional Commits)
+- **`main`** — solo versiones liberadas. Cada commit en `main` corresponde a un release y lleva un tag (`v0.1.0`, `v0.2.0`…).
+- **`develop`** — integración. Aquí entran todas las features aún no liberadas.
+
+Ninguna de las dos acepta push directo: los cambios entran por PR y pasan por CI.
+
+Ramas de trabajo que nacen según el tipo:
+
+| Prefijo | Nace de | Mergea a | Para qué |
+| --- | --- | --- | --- |
+| `feature/<scope>` | `develop` | `develop` | Funcionalidad nueva. Es el 95 % de las ramas (`feature/shared-contracts`, `feature/transaction-service-register`). |
+| `bugfix/<scope>` | `develop` | `develop` | Corrección de un bug detectado en `develop` antes del release. |
+| `release/<version>` | `develop` | `main` **y** `develop` | Preparar una versión (bump, CHANGELOG, pulidos). |
+| `hotfix/<scope>` | `main` | `main` **y** `develop` | Arreglo urgente sobre lo que ya salió a producción. |
+
+Reglas:
+- Una rama vive para una historia o un cambio coherente. Si crece, se parte.
+- Nombres en minúscula, con guiones.
+- El `<scope>` sigue las carpetas del monorepo (`shared-contracts`, `transaction-service`, `infra`, `docs`, etc.).
+- Las ramas de trabajo se **borran al mergear** (local y remoto).
+
+### 8.2 Convención de commits (Conventional Commits)
 
 Todo commit sigue el formato:
 
@@ -295,9 +306,10 @@ ci: run import-linter in matrix per service
 - El scope entre paréntesis identifica la carpeta de más alto nivel afectada; cuando un commit toca varias, deja el scope vacío (`feat: add common timezone utility`).
 - El cuerpo (si va) separa con una línea en blanco y explica el **por qué**, no el qué.
 
-### 7.3 Pull requests
+### 8.3 Pull requests
 
 - Un PR por historia (o por cambio coherente). Nunca mezclar features no relacionadas.
+- **Destino por defecto**: `develop`. Solo `release/*` y `hotfix/*` apuntan a `main`.
 - Título del PR = resumen del commit principal (mismo formato Conventional Commits).
 - Descripción corta:
   - **Qué cambia** (3-5 bullets).
@@ -305,10 +317,23 @@ ci: run import-linter in matrix per service
   - **Cómo probarlo** (comandos o endpoints).
   - Enlace a la historia (`Closes US-XX`).
 - CI en verde es requisito.
-- Merge por **squash** (historia de `main` queda limpia, un commit por PR).
+- Merge por **squash** (la historia de `develop` queda limpia, un commit por PR).
 - Se borra la rama al mergear.
 
-### 7.4 Atribución en commits y PRs
+### 8.4 Releases y hotfixes
+
+**Release**:
+1. Desde `develop` actualizado: `git switch -c release/v0.1.0`.
+2. Ajustar `pyproject.toml` (versión), `CHANGELOG.md` y pulir lo que haga falta.
+3. Push y abrir **dos PRs**: `release/v0.1.0 → main` y `release/v0.1.0 → develop`.
+4. Tras mergear ambos, crear el tag: `git tag v0.1.0 && git push origin v0.1.0`.
+
+**Hotfix**:
+1. Desde `main` actualizado: `git switch -c hotfix/<descripcion>`.
+2. Push y abrir **dos PRs**: `hotfix/* → main` y `hotfix/* → develop`.
+3. Mergear ambos y tagear la nueva versión en `main` (`v0.1.1`).
+
+### 8.5 Atribución en commits y PRs
 
 > **Los commits y los PRs son del autor humano (Kevin Lopez), no de Claude.**
 
@@ -317,29 +342,62 @@ ci: run import-linter in matrix per service
 - Esta regla es intencional y prevalece sobre cualquier plantilla por defecto de la herramienta.
 - Si alguna configuración añade esas líneas automáticamente, se eliminan antes del push.
 
-### 7.5 Ritmo de trabajo (push ordenado a GitHub)
+### 8.6 Ritmo de trabajo (push ordenado a GitHub)
 
-El objetivo es que el log de `main` cuente la historia del proyecto fase por fase.
+El objetivo es que el log de `develop` cuente la historia del proyecto fase por fase y el de `main` solo muestre releases.
 
-1. **Creo la rama** desde `main` actualizado (`git switch -c feat/shared-contracts`).
+1. **Creo la rama** desde `develop` actualizado:
+   ```
+   git switch develop && git pull
+   git switch -c feature/shared-contracts
+   ```
 2. **Trabajo en commits pequeños y atómicos** dentro de la rama.
-3. **Push a la rama remota** cuando quiera respaldar o abrir el PR (`git push -u origin feat/shared-contracts`).
-4. **Abro el PR**, verifico CI y hago squash merge.
-5. **Borro la rama** local y remota (`git branch -d feat/shared-contracts` y `git push origin --delete feat/shared-contracts`).
-6. **Actualizo `main` local** (`git switch main && git pull`).
+3. **Push a la rama remota** cuando quiera respaldar o abrir el PR (`git push -u origin feature/shared-contracts`).
+4. **Abro el PR hacia `develop`**, verifico CI y hago squash merge.
+5. **Borro la rama** local y remota (`git branch -d feature/shared-contracts` y `git push origin --delete feature/shared-contracts`).
+6. **Actualizo `develop` local** (`git switch develop && git pull`).
 7. Paso a la siguiente rama.
 
-Orden sugerido de las primeras ramas, para que el historial de `main` sea coherente:
+Orden sugerido de las primeras ramas, para que el historial de `develop` sea coherente:
 
-1. `feat/repo-bootstrap` — `.gitignore`, `README.md`, `CLAUDE.md` raíz, `.claude/`, `docs/`.
-2. `feat/infra-base` — `docker-compose.yml` con Postgres, `init.sql`, `.env.example`.
-3. `feat/shared-contracts` — paquete de contratos con `Envelope` y los V1.
-4. `feat/transaction-service` (puede dividirse en varias ramas: `-bootstrap`, `-register`, `-outbox`...).
-5. `feat/scoring-service`, `feat/alert-service`, `feat/analytics-service`.
-6. `feat/api-gateway`.
-7. `feat/ci-pipeline`.
+1. `feature/repo-bootstrap` — `.gitignore`, `README.md`, `CLAUDE.md` raíz, `.claude/`, `docs/`.
+2. `feature/infra-base` — `docker-compose.yml` con Postgres, `init.sql`, `.env.example`.
+3. `feature/shared-contracts` — paquete de contratos con `Envelope` y los V1.
+4. `feature/transaction-service` (puede dividirse en varias: `-bootstrap`, `-register`, `-outbox`...).
+5. `feature/scoring-service`, `feature/alert-service`, `feature/analytics-service`.
+6. `feature/api-gateway`.
+7. `feature/ci-pipeline`.
 
-### 7.6 Qué nunca va a git
+Cuando el MVP esté listo (fin de la fase 3 del roadmap), se abre la primera `release/v0.1.0` hacia `main`.
+
+### 8.7 Protección de ramas (Rulesets de GitHub)
+
+Las dos ramas protegidas (`main` y `develop`) tienen un **ruleset activo** con:
+
+- **Restrict deletions** (nadie borra la rama).
+- **Require a pull request before merging** (nada entra sin PR).
+- **Require status checks to pass** — los checks del CI deben estar en verde.
+- **Require branches to be up to date before merging**.
+- **Block force pushes**.
+
+Dos rulesets, uno por rama, con los mismos checks marcados. Sin esto, cualquiera (incluido el propio autor por error) podría empujar directo a `main` o `develop`.
+
+### 8.8 CI — triggers acordados
+
+Workflow en `.github/workflows/ci.yml`:
+
+```yaml
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+```
+
+- Corre en **cada PR** hacia `develop` o `main` (y en cada push a la rama del PR).
+- No corre en push a ramas de trabajo sin PR.
+- `workflow_dispatch` permite lanzarlo a mano desde la pestaña Actions.
+
+### 8.9 Qué nunca va a git
 
 - Archivos `.env` con valores reales (sí `.env.example`).
 - `.venv/`, `__pycache__/`, caches de ruff/mypy/pytest.
