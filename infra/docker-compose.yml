@@ -1,0 +1,91 @@
+name: fraudshield
+
+services:
+
+  # ────────────────────────────────────────────────────────────
+  # Base de datos única: un esquema y un usuario por servicio
+  # ────────────────────────────────────────────────────────────
+  database:
+    image: postgres:16-alpine
+    container_name: fraudshield-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fraudshield}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-admin}
+      TX_USER_PASSWORD: ${TX_USER_PASSWORD:-dev_tx}
+      SCORING_USER_PASSWORD: ${SCORING_USER_PASSWORD:-dev_scoring}
+      ALERTS_USER_PASSWORD: ${ALERTS_USER_PASSWORD:-dev_alerts}
+      ANALYTICS_USER_PASSWORD: ${ANALYTICS_USER_PASSWORD:-dev_analytics}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER:-admin} -d ${POSTGRES_DB:-fraudshield}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - fraudshield-net
+
+  # ────────────────────────────────────────────────────────────
+  # Broker (Kafka KRaft) — comentado por ahora.
+  # Se habilita cuando el primer servicio empiece a publicar.
+  # ────────────────────────────────────────────────────────────
+  # broker:
+  #   image: apache/kafka:3.7.0
+  #   container_name: fraudshield-broker
+  #   restart: unless-stopped
+  #   environment:
+  #     KAFKA_NODE_ID: 1
+  #     KAFKA_PROCESS_ROLES: broker,controller
+  #     KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     CLUSTER_ID: fraudshield-cluster
+  #   ports:
+  #     - "${KAFKA_HOST_PORT:-9092}:9092"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+  #   networks:
+  #     - fraudshield-net
+
+  # ────────────────────────────────────────────────────────────
+  # n8n (notificaciones) — comentado por ahora.
+  # Se habilita en la fase de alertas.
+  # ────────────────────────────────────────────────────────────
+  # notifier:
+  #   image: n8nio/n8n:latest
+  #   container_name: fraudshield-notifier
+  #   restart: unless-stopped
+  #   environment:
+  #     N8N_BASIC_AUTH_ACTIVE: "true"
+  #     N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+  #     N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-admin}
+  #     GENERIC_TIMEZONE: America/Lima
+  #   ports:
+  #     - "${N8N_HOST_PORT:-5678}:5678"
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #     - ./notifications/n8n/flows:/flows:ro
+  #   networks:
+  #     - fraudshield-net
+
+volumes:
+  pgdata:
+  # kafka-data:
+  # n8n-data:
+
+networks:
+  fraudshield-net:
+    driver: bridge
