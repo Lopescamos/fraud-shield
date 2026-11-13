@@ -1,0 +1,30 @@
+rules:
+  - code: atypical_amount
+    description: "Amount above a per-channel threshold"
+    points: 25
+    thresholds:
+      WEB: 2000
+      MOBILE: 1500
+      POS: 3000
+
+  - code: high_risk_country
+    description: "Transaction from a country with high fraud base rate"
+    points: 30
+    countries: ["NG", "RU", "VE", "KP"]
+
+  - code: unusual_hour
+    description: "Transaction at an atypical hour (00:00-05:59)"
+    points: 10
+    hour_start: 0
+    hour_end: 6
+
+  - code: new_device
+    description: "Device never seen on the account (first-seen flag in extra_features)"
+    points: 20
+    feature: new_device
+
+  - code: velocity
+    description: "More than N operations in the configured window (tx_count_last_5m)"
+    points: 30
+    feature: tx_count_last_5m
+    threshold: 10
