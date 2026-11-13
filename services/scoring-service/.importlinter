@@ -1,0 +1,43 @@
+[importlinter]
+root_package = scoring
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Layers of DDD point inward
+type = layers
+layers =
+    scoring.interfaces
+    scoring.infrastructure
+    scoring.application
+    scoring.domain
+    scoring.kernel
+
+[importlinter:contract:domain-pure]
+name = Domain does not depend on frameworks
+type = forbidden
+source_modules =
+    scoring.domain
+forbidden_modules =
+    fastapi
+    sqlalchemy
+    aiokafka
+    pydantic
+    shared_contracts
+    xgboost
+    sklearn
+    shap
+
+[importlinter:contract:application-pure]
+name = Application does not depend on infrastructure or interfaces
+type = forbidden
+source_modules =
+    scoring.application
+forbidden_modules =
+    scoring.infrastructure
+    scoring.interfaces
+    fastapi
+    sqlalchemy
+    aiokafka
+    xgboost
+    sklearn
+    shap
