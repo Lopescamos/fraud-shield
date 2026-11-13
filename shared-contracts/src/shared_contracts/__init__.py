@@ -1,0 +1,1 @@
+"""FraudShield shared message contracts."""
