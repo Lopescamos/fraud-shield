@@ -1,0 +1,37 @@
+[importlinter]
+root_package = transaction
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Layers of DDD point inward
+type = layers
+layers =
+    transaction.interfaces
+    transaction.infrastructure
+    transaction.application
+    transaction.domain
+    transaction.kernel
+
+[importlinter:contract:domain-pure]
+name = Domain does not depend on frameworks
+type = forbidden
+source_modules =
+    transaction.domain
+forbidden_modules =
+    fastapi
+    sqlalchemy
+    aiokafka
+    pydantic
+    shared_contracts
+
+[importlinter:contract:application-pure]
+name = Application does not depend on infrastructure or interfaces
+type = forbidden
+source_modules =
+    transaction.application
+forbidden_modules =
+    transaction.infrastructure
+    transaction.interfaces
+    fastapi
+    sqlalchemy
+    aiokafka
