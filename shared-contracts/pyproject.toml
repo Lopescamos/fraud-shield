@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "shared-contracts"
+version = "0.1.0"
+description = "FraudShield shared message contracts (Envelope, events V1, channel constants)."
+authors = ["Kevin Lopez <kelvin.lopescamos@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "shared_contracts", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+ruff = "^0.6"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
