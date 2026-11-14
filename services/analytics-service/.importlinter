@@ -1,0 +1,37 @@
+[importlinter]
+root_package = analytics
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Layers of DDD point inward
+type = layers
+layers =
+    analytics.interfaces
+    analytics.infrastructure
+    analytics.application
+    analytics.domain
+    analytics.kernel
+
+[importlinter:contract:domain-pure]
+name = Domain does not depend on frameworks
+type = forbidden
+source_modules =
+    analytics.domain
+forbidden_modules =
+    fastapi
+    sqlalchemy
+    aiokafka
+    pydantic
+    shared_contracts
+
+[importlinter:contract:application-pure]
+name = Application does not depend on infrastructure or interfaces
+type = forbidden
+source_modules =
+    analytics.application
+forbidden_modules =
+    analytics.infrastructure
+    analytics.interfaces
+    fastapi
+    sqlalchemy
+    aiokafka
