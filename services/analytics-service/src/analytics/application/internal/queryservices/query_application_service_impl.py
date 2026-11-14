@@ -24,7 +24,6 @@ from analytics.domain.repositories.analytics_read_repository import (
     AnalyticsReadRepository,
 )
 
-
 ReadBuilder = Callable[[Any], AnalyticsReadRepository]
 
 

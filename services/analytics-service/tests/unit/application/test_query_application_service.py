@@ -23,7 +23,6 @@ from analytics.domain.model.valueobjects.priority import Priority
 from analytics.domain.model.views.alert_view import AlertView
 from analytics.domain.model.views.metrics_views import DailyMetric, SummaryMetric
 from analytics.domain.model.views.transaction_view import TransactionView
-
 from tests.unit.application.fakes.fake_read_repository import FakeReadRepository
 from tests.unit.application.fakes.fake_session import (
     FakeSession,

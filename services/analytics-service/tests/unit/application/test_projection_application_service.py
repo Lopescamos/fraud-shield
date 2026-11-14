@@ -19,7 +19,6 @@ from analytics.domain.model.valueobjects.alert_status import AlertStatus
 from analytics.domain.model.valueobjects.decision import Decision
 from analytics.domain.model.valueobjects.priority import Priority
 from analytics.kernel.application.result import Failure, Success
-
 from tests.unit.application.fakes.fake_processed_event_store import (
     FakeProcessedEventStore,
 )
