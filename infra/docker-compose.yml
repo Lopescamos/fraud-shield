@@ -31,34 +31,79 @@ services:
       - fraudshield-net
 
   # ────────────────────────────────────────────────────────────
-  # Broker (Kafka KRaft) — comentado por ahora.
-  # Se habilita cuando el primer servicio empiece a publicar.
+  # Broker (Kafka KRaft, single-node).
+  # Advertised listeners:
+  #   - "broker:9092" para los otros servicios en la red docker.
+  #   - "localhost:29092" para procesos del host (uvicorn local).
+  # Los servicios siguen arrancando con sus switches en false; cuando
+  # el usuario quiera consumir/publicar, los enciende con env vars.
   # ────────────────────────────────────────────────────────────
-  # broker:
-  #   image: apache/kafka:3.7.0
-  #   container_name: fraudshield-broker
-  #   restart: unless-stopped
-  #   environment:
-  #     KAFKA_NODE_ID: 1
-  #     KAFKA_PROCESS_ROLES: broker,controller
-  #     KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
-  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-  #     CLUSTER_ID: fraudshield-cluster
-  #   ports:
-  #     - "${KAFKA_HOST_PORT:-9092}:9092"
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 10
-  #   networks:
-  #     - fraudshield-net
+  broker:
+    image: apache/kafka:3.7.0
+    container_name: fraudshield-broker
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: fraudshield-cluster
+    ports:
+      - "${KAFKA_HOST_PORT:-29092}:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - fraudshield-net
+
+  # ────────────────────────────────────────────────────────────
+  # topics-init: crea los topics de FraudShield una sola vez.
+  # Corre hasta que termine (restart: "no"); si el topic ya existe,
+  # kafka-topics --create es idempotente con --if-not-exists.
+  # ────────────────────────────────────────────────────────────
+  topics-init:
+    image: apache/kafka:3.7.0
+    container_name: fraudshield-topics-init
+    depends_on:
+      broker:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command: |
+      '
+      set -e
+      KT=/opt/kafka/bin/kafka-topics.sh
+      BOOTSTRAP=broker:9092
+
+      create() {
+        $$KT --bootstrap-server $$BOOTSTRAP --create --if-not-exists \
+            --topic "$$1" --partitions "$$2" --replication-factor 1
+        $$KT --bootstrap-server $$BOOTSTRAP --create --if-not-exists \
+            --topic "$$1.dlq" --partitions 1 --replication-factor 1
+      }
+
+      create transactions.received.v1 6
+      create transactions.scored.v1   6
+      create alerts.raised.v1         3
+      create alerts.resolved.v1       3
+
+      echo "topics ready:"
+      $$KT --bootstrap-server $$BOOTSTRAP --list
+      '
+    networks:
+      - fraudshield-net
 
   # ────────────────────────────────────────────────────────────
   # n8n (notificaciones) — comentado por ahora.
@@ -83,7 +128,7 @@ services:
 
 volumes:
   pgdata:
-  # kafka-data:
+  kafka-data:
   # n8n-data:
 
 networks:

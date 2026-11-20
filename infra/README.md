@@ -46,6 +46,38 @@ docker compose -f infra/docker-compose.yml down -v
 | `broker/kafka/` | Configuración y topics iniciales (cuando se habilite Kafka) |
 | `notifications/n8n/` | Flujos exportados (cuando se habilite n8n) |
 
+## Kafka
+
+El broker arranca con `docker compose up -d`. Un contenedor `topics-init` corre una sola vez al terminar el healthcheck y crea los topics del proyecto (idempotente con `--if-not-exists`):
+
+| Topic | Particiones | DLQ |
+| --- | --- | --- |
+| `transactions.received.v1` | 6 | `transactions.received.v1.dlq` |
+| `transactions.scored.v1`   | 6 | `transactions.scored.v1.dlq` |
+| `alerts.raised.v1`         | 3 | `alerts.raised.v1.dlq` |
+| `alerts.resolved.v1`       | 3 | `alerts.resolved.v1.dlq` |
+
+Verificar:
+
+```powershell
+docker exec -it fraudshield-broker /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker:9092 --list
+```
+
+### Cómo apuntar los servicios
+
+- **Desde la red docker** (cuando los servicios corran en el mismo compose): `broker:9092`.
+- **Desde tu host** (cuando corras `uvicorn` local): `localhost:29092` (puerto `KAFKA_HOST_PORT`).
+
+Ejemplo de encendido:
+
+```powershell
+$env:TRANSACTION_KAFKA_BOOTSTRAP_SERVERS="localhost:29092"
+$env:TRANSACTION_OUTBOX_RELAY_ENABLED="true"
+poetry run uvicorn transaction.main:app --port 8001
+```
+
+Mismo patrón con `SCORING_*`, `ALERT_*` y `ANALYTICS_*` + sus switches `*_CONSUMER_ENABLED`.
+
 ## Servicios comentados
 
-El `docker-compose.yml` trae `broker` (Kafka) y `notifier` (n8n) **comentados**. Se habilitan cuando el proyecto llegue a la fase que los necesita (publicación de eventos y notificaciones).
+Queda `notifier` (n8n) **comentado**; se habilita en la fase de notificaciones.
