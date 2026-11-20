@@ -15,7 +15,7 @@ Servicio operativo para registrar y consultar transacciones por API con idempote
 - 2026-11-12: tests — 12 unit (domain + application con fakes), 3 contract (envelope roundtrip + tolerancia), 7 interfaces/rest (POST 202/422, GET 200/404, idempotency, /health), 1 architecture (import-linter: 3 contratos verdes), 3 integration de persistencia que se skipean limpiamente cuando Docker no está disponible.
 
 ## Pendiente (orden sugerido)
-- [ ] US-02 — endpoint `POST /api/v1/transactions/batch` (lote hasta 500).
+- [x] US-02 — endpoint `POST /api/v1/transactions/batch` (lote hasta 500). Implementado en `feature/transaction-service-batch`: TransactionBatchCommandServiceImpl itera los items en una sola transacción, items inválidos devuelven `BatchItemOutcome(error)` sin romper el batch, idempotencia por item deriva la key del header `Idempotency-Key` + índice.
 - [ ] Encender `OutboxRelayJob` + `KafkaBrokerPublisher` cuando Kafka esté arriba (`TRANSACTION_OUTBOX_RELAY_ENABLED=true`).
 - [ ] Levantar Postgres con `docker compose -f infra/docker-compose.yml up -d` para correr los tests de integración y `poetry run alembic upgrade head`.
 - [ ] CI: añadir un job de `transaction-service` al pipeline del monorepo (ruff + mypy + lint-imports + pytest).
