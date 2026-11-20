@@ -5,6 +5,9 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from transaction.application.internal.commandservices.transaction_batch_command_service_impl import (
+    TransactionBatchCommandServiceImpl,
+)
 from transaction.application.internal.commandservices.transaction_command_service_impl import (
     TransactionCommandServiceImpl,
 )
@@ -62,6 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session_factory=session_factory,
         repository_builder=repository_builder,
     )
+    batch_command_service = TransactionBatchCommandServiceImpl(
+        session_factory=session_factory,
+        repository_builder=repository_builder,
+    )
     query_service = TransactionQueryServiceImpl(
         session_factory=session_factory,
         repository_builder=repository_builder,
@@ -82,6 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.transaction_command_service = command_service
+    app.state.transaction_batch_command_service = batch_command_service
     app.state.transaction_query_service = query_service
 
     exception_handlers.register(app)

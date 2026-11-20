@@ -67,11 +67,41 @@ class FakeQueryService:
         return self._by_id.get(query.transaction_id)
 
 
+class FakeBatchCommandService:
+    def __init__(self) -> None:
+        self.calls: list = []
+
+    async def handle(self, command, idempotency_key=None):
+        from transaction.application.commandservices.transaction_batch_command_service import (
+            BatchItemOutcome,
+        )
+
+        self.calls.append((command, idempotency_key))
+        outcomes = []
+        for i, item in enumerate(command.items):
+            if not item.account_id.strip():
+                outcomes.append(
+                    BatchItemOutcome(
+                        index=i,
+                        transaction_id=None,
+                        error=ApplicationError.validation_error(
+                            "transaction", "account_id cannot be empty"
+                        ),
+                    )
+                )
+            else:
+                outcomes.append(
+                    BatchItemOutcome(index=i, transaction_id=uuid4(), error=None)
+                )
+        return outcomes
+
+
 def _build_app() -> tuple[FastAPI, FakeCommandService, FakeQueryService]:
     command = FakeCommandService()
     query = FakeQueryService()
     app = FastAPI()
     app.state.transaction_command_service = command
+    app.state.transaction_batch_command_service = FakeBatchCommandService()
     app.state.transaction_query_service = query
     exception_handlers.register(app)
     app.include_router(health_router)
@@ -202,6 +232,62 @@ async def test_get_returns_404_when_missing() -> None:
     body = resp.json()
     assert body["title"] == "Transaction not found"
     assert body["status"] == 404
+
+
+@pytest.mark.asyncio
+async def test_post_batch_returns_outcomes_with_partial_rejection() -> None:
+    app, _, _ = _build_app()
+
+    # account_id "   " passes Pydantic (min_length=1) but fails the
+    # AccountId domain invariant, which is exactly the kind of per-item
+    # error the batch service is designed to isolate.
+    body = {
+        "items": [
+            _valid_body(),
+            {**_valid_body(), "account_id": "   "},
+            _valid_body(),
+        ]
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        resp = await client.post("/api/v1/transactions/batch", json=body)
+
+    assert resp.status_code == 202
+    payload = resp.json()
+    assert payload["accepted"] == 2
+    assert payload["rejected"] == 1
+    assert payload["outcomes"][1]["error"]["code"] == "validation_error"
+    assert payload["outcomes"][0]["transaction_id"]
+
+
+@pytest.mark.asyncio
+async def test_post_batch_rejects_unknown_root_field() -> None:
+    app, _, _ = _build_app()
+
+    body = {"items": [_valid_body()], "unexpected": 1}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        resp = await client.post("/api/v1/transactions/batch", json=body)
+
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_post_batch_rejects_over_500_items() -> None:
+    app, _, _ = _build_app()
+
+    body = {"items": [_valid_body() for _ in range(501)]}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        resp = await client.post("/api/v1/transactions/batch", json=body)
+
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
