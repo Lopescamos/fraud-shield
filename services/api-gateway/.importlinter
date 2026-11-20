@@ -1,0 +1,34 @@
+[importlinter]
+root_package = gateway
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Layers of DDD point inward
+type = layers
+layers =
+    gateway.interfaces
+    gateway.infrastructure
+    gateway.application
+    gateway.domain
+    gateway.kernel
+
+[importlinter:contract:domain-pure]
+name = Domain does not depend on frameworks
+type = forbidden
+source_modules =
+    gateway.domain
+forbidden_modules =
+    fastapi
+    httpx
+    pydantic
+
+[importlinter:contract:application-pure]
+name = Application does not depend on infrastructure or interfaces
+type = forbidden
+source_modules =
+    gateway.application
+forbidden_modules =
+    gateway.infrastructure
+    gateway.interfaces
+    fastapi
+    httpx
