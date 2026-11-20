@@ -59,6 +59,8 @@ infra/n8n/data/
 # Los datasets y modelos entrenados no van al repo; se regeneran con los scripts
 data/raw/
 data/processed/
+services/*/data/raw/
+services/*/data/models/
 *.csv
 *.parquet
 *.pkl
